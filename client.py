@@ -5,7 +5,10 @@ import os
 from dotenv import load_dotenv
 
 load_dotenv()
-client = discord.Client()
+intents = discord.Intents.default()
+intents.members = True
+
+client = discord.Client(intents=intents)
 
 
 async def inviteChecker(incoming_invite):
@@ -24,6 +27,7 @@ async def inviteChecker(incoming_invite):
 
 @client.event
 async def on_member_join(member):
+    print("Someone has joined the server!")
     roles = member.guild.roles
     invites = await member.guild.invites()
     for invite in invites:
