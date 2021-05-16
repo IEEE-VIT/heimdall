@@ -66,6 +66,11 @@ def remove_role(role):
 
 
 @bot.command()
+async def hello(ctx):
+    await ctx.send("Hey There! I am alive")
+
+
+@bot.command()
 async def invites(ctx, *args):
     if (args[0].startswith("show")):
         stringGenerator = "Invites of this server are: \n"
@@ -110,9 +115,16 @@ async def invites(ctx, *args):
                     await ctx.send("FAILURE: Role unable to unlink")
 
     if (args[0].startswith("create")):
-        link = await ctx.channel.create_invite(reason=ctx.author.name + " Created a Global Invite")
+        general_invite = ""
+        try:
+            channel_id = args[1]
+            general_invite = bot.get_channel(int(channel_id))
+        except:
+            general_invite = bot.get_channel(int("832993010504958006"))
+        link = await general_invite.create_invite(reason=ctx.author.name + " Created a Global Invite")
         await ctx.send(link)
 
 
 bot.run(os.getenv("BOT_TOKEN"))
 bot.add_command(invites)
+bot.add_command(hello)
