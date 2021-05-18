@@ -44,27 +44,4 @@ async def on_ready():
     print('Logged in as {0.user}'.format(client))
 
 
-@client.event
-async def on_message(message):
-    anc = client.get_channel(int("838453531585019934")
-                             )  # announcements channel
-    if(str(message.channel) == "announcement-commands"):
-        if message.author == client.user:
-            return
-        msg = message.content
-        if msg.startswith('*roost'):
-            content = str(msg)[6:]
-            await anc.send(content)
-    # if(str(message.channel) == "general"):
-    #     roles = message.guild.roles
-    #     invites = await message.guild.invites()
-    #     for invite in invites:
-    #         result = await inviteChecker(invite)
-    #         print("This is result", result)
-    #         if(result != "none"):
-    #             for role in roles:
-    #                 if(role.id == result):
-    #                     await message.author.add_roles(role)
-
-
 client.run(os.getenv("BOT_TOKEN"))
