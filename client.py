@@ -2,27 +2,26 @@
 import discord
 import json
 import os
+import db
+from discord import channel
+from discord.ext import commands
 from dotenv import load_dotenv
 
+db = db.Database()
 load_dotenv()
 intents = discord.Intents.default()
 intents.members = True
-
 client = discord.Client(intents=intents)
 
-
-async def inviteChecker(incoming_invite):
-    with open("data.json", "r+") as f:
-        data = json.load(f)
-        for invite in data["data"]:
-            if incoming_invite.code == invite["invite_code"]:
-                if (incoming_invite.uses != invite["uses"]):
-                    invite["uses"] = incoming_invite.uses
-                    f.close()
-                    with open("data.json", "w+") as g:
-                        json.dump(data, g)
-                    return invite["role_id"]
-        return "none"
+def inviteChecker(incoming_invite):
+    data = db.fetch()
+    for invite in data:
+        if incoming_invite.code == invite["invite_code"]:
+            if (incoming_invite.uses != invite["uses"]):
+                invite["uses"] = incoming_invite.uses
+                db.write(data)
+                return invite["role_id"]
+    return "none"
 
 
 @client.event
