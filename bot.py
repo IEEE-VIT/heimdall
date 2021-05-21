@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 client = discord.Client()
-bot = commands.Bot(command_prefix='gg ')
+bot = commands.Bot(command_prefix='ggt ')
 
 
 def role_finder(inviteLink):
@@ -74,11 +74,20 @@ async def hello(ctx):
 async def invites(ctx, *args):
     if (args[0].startswith("show")):
         stringGenerator = "Invites of this server are: \n"
-        index = 1
-        for invite in await ctx.guild.invites():
+        page = int(args[1]) if len(args)>1 else 1
+        invites = await ctx.guild.invites() 
+        nInvites = len(invites)
+        nPages  = nInvites//12 + 1
+        if(page>nPages):
+            await ctx.send("Ahem. That page doesn't exist, human. ಠ_ಠ")
+            return
+        start = 12*(page-1)
+        end = nInvites if 12*page>nInvites else 12*page
+        for i in range(start, end):
+            invite = invites[i]
             stringGenerator += "```{}. Invite Code: {}\nInvite Uses: {}\nCreated By: {}\nChannel: {}\nMax Uses: {}\nRole Attached: {}\n\n```".format(
-                str(index), invite.code, invite.uses, invite.inviter, invite.channel, invite.max_uses, role_finder(invite.code))
-            index += 1
+                str(i+1), invite.code, invite.uses, invite.inviter, invite.channel, invite.max_uses, role_finder(invite.code))
+        stringGenerator += f"```Page {page} of {nPages}```"
         await ctx.send(stringGenerator)
 
     if (args[0].startswith("link")):
