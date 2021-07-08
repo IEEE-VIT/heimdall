@@ -140,3 +140,4 @@ cython_debug/
 #Rooster
 test.py
 data.json
+invites.db
