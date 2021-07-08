@@ -40,17 +40,18 @@ class Database:
             old_data = self.fetch_json()
             if(delete):
                 for i in range(len(old_data)):
-                    if data[i] == data:
-                        data.pop(i)
-                        return True
-                return False
+                    if old_data[i] == data:
+                        print(old_data[i])
+                        old_data.pop(i)
+                    elif i==len(old_data)-1:# Not Found
+                        print("Invite Code Not Found.")
+                        raise Exception()
             else:
                 old_data.append(data)
-                data = {'data':old_data}
-                print(data)
-                with open('data.json','w+') as d:
-                    json.dump(data, d)
-                return True
+            data = {'data':old_data}
+            with open('data.json','w+') as d:
+                json.dump(data, d)
+            return True
         except:
             print("Error while writing to JSON")
             return False
