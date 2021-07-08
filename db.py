@@ -2,6 +2,8 @@
 import json
 import os
 from dotenv import load_dotenv
+from os import path
+import sqlite3
 
 load_dotenv()
 
@@ -15,14 +17,14 @@ class Database:
         elif dbType == "SQLITE3":
             return self.fetch_sqlite()
 
-    def write(self,data):
+    def write(self, data, delete=False):
         dbType = os.getenv('DB_TYPE')
         if dbType == "JSON":
-            return self.write_json(data)
+            return self.write_json(data,delete)
         elif dbType == "POSTGRESQL":
-            return self.write_postgre(data)
+            return self.write_postgre(data,delete)
         elif dbType == "SQLITE3":
-            return self.write_sqlite(data)
+            return self.write_sqlite(data,delete)
 
     def fetch_json(self):
         try:
@@ -33,12 +35,22 @@ class Database:
             print("Error while fetching JSON file")
             return "Error"
 
-    def write_json(self, data):
+    def write_json(self, data, delete):
         try:
-            data = {'data':data}
-            with open('data.json','w+') as d:
-                json.dump(data, d)
-            return True
+            old_data = self.fetch_json()
+            if(delete):
+                for i in range(len(old_data)):
+                    if data[i] == data:
+                        data.pop(i)
+                        return True
+                return False
+            else:
+                old_data.append(data)
+                data = {'data':old_data}
+                print(data)
+                with open('data.json','w+') as d:
+                    json.dump(data, d)
+                return True
         except:
             print("Error while writing to JSON")
             return False

@@ -37,25 +37,23 @@ async def is_valid_role(roles, input):
 
 
 def add_role(inviteLink, role):
-    data = {}
     data = db.fetch()
     for invite_object in data:
         if(invite_object["invite_code"] == inviteLink):
             return False
-    data.append({"invite_code": inviteLink, "uses": 0,
-                            "role_linked": role.name, "role_id": role.id})
-    db.write(data)
-    return True
+    data = {"invite_code": inviteLink, "uses": 0,"role_linked": role.name, "role_id": role.id}
+    if(db.write(data)):
+        return True
+    return False
 
 
 def remove_role(role):
     data = db.fetch()
     for i in range(len(data)):
         if data[i]["role_linked"] == role.name:
-            data.pop(i)
-            break
-    db.write(data)
-    return True
+            if(db.write(data[i],delete=True)):
+                return True
+            return False
 
 
 @bot.command()
@@ -121,7 +119,8 @@ async def invites(ctx, *args):
             channel_id = args[1]
             general_invite = bot.get_channel(int(channel_id))
         except:
-            general_invite = bot.get_channel(int("832993010504958006"))
+            await ctx.send('Please provide a Channel ID.')
+            return
         link = await general_invite.create_invite(reason=ctx.author.name + " Created a Global Invite")
         await ctx.send(link)
 
