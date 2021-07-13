@@ -1,23 +1,23 @@
 #!/usr/bin/env python3
-import discord
-from discord.ext import commands
 import json
 import os
+import discord
+from discord.ext import commands
 from dotenv import load_dotenv
+import db
 
 load_dotenv()
 
+db = db.Database()
 client = discord.Client()
 bot = commands.Bot(command_prefix='ggt ')
 
-
 def role_finder(inviteLink):
-    with open('data.json') as f:
-        data = json.load(f)
-        for invite_object in data["data"]:
-            if(invite_object["invite_code"] == inviteLink):
-                return invite_object["role_linked"]
-        return "None"
+    data = db.fetch()
+    for invite_object in data:
+        if(invite_object["invite_code"] == inviteLink):
+            return invite_object["role_linked"]
+    return "None"
 
 
 async def is_valid_invite(ctx, code):
@@ -37,38 +37,28 @@ async def is_valid_role(roles, input):
 
 
 def add_role(inviteLink, role):
-    data = {}
-    with open('data.json', "r+") as f:
-        data = json.load(f)
-        for invite_object in data["data"]:
-            if(invite_object["invite_code"] == inviteLink):
-                return False
-        data["data"].append({"invite_code": inviteLink, "uses": 0,
-                             "role_linked": role.name, "role_id": role.id})
-        f.close()
-    with open("data.json", "w+") as g:
-        json.dump(data, g)
-    return True
+    data = db.fetch()
+    for invite_object in data:
+        if(invite_object["invite_code"] == inviteLink):
+            return False
+    data = {"invite_code": inviteLink, "uses": 0,"role_linked": role.name, "role_id": role.id}
+    if(db.write(data)):
+        return True
+    return False
 
 
 def remove_role(role):
-    data = {}
-    with open("data.json", "r+") as f:
-        data = json.load(f)
-        for i in range(len(data["data"])):
-            if data["data"][i]["role_linked"] == role.name:
-                data["data"].pop(i)
-                break
-        f.close()
-    with open("data.json", "w+") as w:
-        json.dump(data, w)
-    return True
+    data = db.fetch()
+    for i in range(len(data)):
+        if data[i]["role_linked"] == role.name:
+            if(db.write(data[i],delete=True)):
+                return True
+            return False
 
 
 @bot.command()
 async def hello(ctx):
     await ctx.send("Hey There! I am alive")
-
 
 @bot.command()
 async def invites(ctx, *args):
@@ -110,7 +100,7 @@ async def invites(ctx, *args):
                     await ctx.send("FAILURE: Role already linked")
 
     if (args[0].startswith("unlink")):
-        role_input = args[1][3:-1]
+        role_input = int(args[1][3:-1])
         validRole = await is_valid_role(ctx.guild.roles, role_input)
         roles = ctx.guild.roles
         if(not validRole):
@@ -129,7 +119,8 @@ async def invites(ctx, *args):
             channel_id = args[1]
             general_invite = bot.get_channel(int(channel_id))
         except:
-            general_invite = bot.get_channel(int("832993010504958006"))
+            await ctx.send('Please provide a Channel ID.')
+            return
         link = await general_invite.create_invite(reason=ctx.author.name + " Created a Global Invite")
         await ctx.send(link)
 
