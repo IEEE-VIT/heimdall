@@ -27,11 +27,18 @@ class Database:
         elif dbType == "SQLITE3":
             return self.write_sqlite(data,delete,update)
 
-    def createPostgreDB(self):
+    def connectToPostgre(self):
         try:
             con = psycopg2.connect(
                 database = os.getenv('PG_DBNAME'),user = os.getenv('PG_USER'), password = os.getenv('PG_PASS'),host = os.getenv('PG_HOST'), port = os.getenv('PG_PORT')
             )
+            return con
+        except Exception as err:
+            print("Error Connecting to PostgreSQL Server: ",err)
+
+    def createPostgreDB(self):
+        try:
+            con = self.connectToPostgre()
             con.autocommit = True
             cur = con.cursor()
             cur.execute('CREATE TABLE IF NOT EXISTS invites(invite_code text, uses int, role_linked text, role_id text)')
@@ -42,9 +49,7 @@ class Database:
     
     def fetch_postgre(self):
         try:
-            con = psycopg2.connect(
-                database = os.getenv('PG_DBNAME'),user = os.getenv('PG_USER'), password = os.getenv('PG_PASS'),host = os.getenv('PG_HOST'), port = os.getenv('PG_PORT')
-            )
+            con = self.connectToPostgre()
             con.autocommit = True
             cur = con.cursor()
             result = cur.execute('SELECT * FROM invites')
@@ -62,9 +67,7 @@ class Database:
     
     def write_postgre(self,data,delete,update):
         try:
-            con = psycopg2.connect(
-                database = os.getenv('PG_DBNAME'),user = os.getenv('PG_USER'), password = os.getenv('PG_PASS'),host = os.getenv('PG_HOST'), port = os.getenv('PG_PORT')
-            )
+            con = self.connectToPostgre()
             con.autocommit = True
             cur = con.cursor()
             if(delete):

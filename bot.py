@@ -100,7 +100,7 @@ async def invites(ctx, *args):
                     await ctx.send("FAILURE: Role already linked")
 
     if (args[0].startswith("unlink")):
-        role_input = args[1][3:-1]
+        role_input = int(args[1][3:-1])
         validRole = await is_valid_role(ctx.guild.roles, role_input)
         roles = ctx.guild.roles
         if(not validRole):

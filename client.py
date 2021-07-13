@@ -20,7 +20,7 @@ def inviteChecker(incoming_invite):
             if (incoming_invite.uses != invite["uses"]):
                 invite["uses"] = incoming_invite.uses
                 db.write(invite, update=True)
-                return invite["role_id"]
+                return int(invite["role_id"])
     return "none"
 
 
