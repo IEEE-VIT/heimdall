@@ -13,8 +13,10 @@ intents = discord.Intents.default()
 intents.members = True
 client = discord.Client(intents=intents)
 
-def inviteChecker(incoming_invite):
-    data = db.fetch()
+def inviteChecker(incoming_invite,i):
+    if(i==0):
+        global data
+        data = db.fetch()
     for invite in data:
         if incoming_invite.code == invite["invite_code"]:
             if (incoming_invite.uses != invite["uses"]):
@@ -29,18 +31,20 @@ async def on_member_join(member):
     print("Someone has joined the server!")
     roles = member.guild.roles
     invites = await member.guild.invites()
+    i=0
     for invite in invites:
-        result = inviteChecker(invite)
+        result = inviteChecker(invite,i)
         print("This is result", result)
         if(result != "none"):
             for role in roles:
                 if(role.id == result):
                     await member.add_roles(role)
+        i+=1
 
 
 @client.event
 async def on_ready():
-    print('Logged in as {0.user}'.format(client))
+    print('Client logged in as {0.user}'.format(client))
 
 
 client.run(os.getenv("BOT_TOKEN"))

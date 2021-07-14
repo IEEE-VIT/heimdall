@@ -10,10 +10,13 @@ load_dotenv()
 
 db = db.Database()
 client = discord.Client()
-bot = commands.Bot(command_prefix='ggt ')
-
-def role_finder(inviteLink):
-    data = db.fetch()
+prefix = os.getenv('BOT_PREFIX')+' '
+bot = commands.Bot(command_prefix=prefix)
+bot.remove_command("help")
+def role_finder(inviteLink,i):
+    if(i==0):
+        global data
+        data = db.fetch()
     for invite_object in data:
         if(invite_object["invite_code"] == inviteLink):
             return invite_object["role_linked"]
@@ -55,10 +58,25 @@ def remove_role(role):
                 return True
             return False
 
+@bot.event
+async def on_ready():
+    print('Bot logged in as {0.user}'.format(bot))
 
 @bot.command()
 async def hello(ctx):
     await ctx.send("Hey There! I am alive")
+
+@bot.command()
+async def help(ctx):
+    embed = discord.Embed(title="Prooster Bot",url="http://github.com/IEEE-VIT/palette-prooster",description="Prooster helps you manage invites and link them to Roles, by which you can assign the roles to members when they join with the invite.", color=discord.Color.blue())
+    embed.add_field(name="Help", value=f"`{prefix}help: Shows this message.`",inline=False)
+    embed.add_field(name="Invites", 
+    value=f'''`{prefix}invites show [optional: page-number]`: Shows the details of the invites on the Server, and the roles attached to them.\n
+    `{prefix}invites link [@role] [invite-code]`: Links the invite with the role given.\n
+    `{prefix}invites unlink [@role] [invite-code]`: Unlinks the invite from the given role.\n
+    `{prefix}invites create`: The bot creates an invite.''',inline=True)
+    embed.add_field(name="Ping", value=f'`{prefix}hello`: Just to check if the bot is up.\n',inline=False)
+    await ctx.send(embed=embed)
 
 @bot.command()
 async def invites(ctx, *args):
@@ -76,7 +94,7 @@ async def invites(ctx, *args):
         for i in range(start, end):
             invite = invites[i]
             stringGenerator += "```{}. Invite Code: {}\nInvite Uses: {}\nCreated By: {}\nChannel: {}\nMax Uses: {}\nRole Attached: {}\n\n```".format(
-                str(i+1), invite.code, invite.uses, invite.inviter, invite.channel, invite.max_uses, role_finder(invite.code))
+                str(i+1), invite.code, invite.uses, invite.inviter, invite.channel, invite.max_uses, role_finder(invite.code, 0 if start==i else 1))
         stringGenerator += f"```Page {page} of {nPages}```"
         await ctx.send(stringGenerator)
 
@@ -126,5 +144,6 @@ async def invites(ctx, *args):
 
 
 bot.run(os.getenv("BOT_TOKEN"))
+bot.add_command(help)
 bot.add_command(invites)
 bot.add_command(hello)
