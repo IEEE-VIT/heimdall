@@ -270,6 +270,7 @@ class Database:
                         break
             else:
                 old_data.append(data)
+            data = {'data':old_data}
             with open('data.json','w+') as d:
                 json.dump(data, d)
             return True
