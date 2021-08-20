@@ -23,8 +23,8 @@ def get_linked_roles():
 async def is_valid_invite(ctx, code):
     for invite in await ctx.guild.invites():
         if(invite.code == code):
-            return True
-    return False
+            return [True,invite.uses]
+    return [False]
 
 
 async def is_valid_role(roles, input):
@@ -36,8 +36,8 @@ async def is_valid_role(roles, input):
     return False
 
 
-def add_role(inviteLink, role):
-    data = {"invite_code": inviteLink, "uses": 0,"role_linked": role.name, "role_id": role.id}
+def add_role(inviteLink, role, uses):
+    data = {"invite_code": inviteLink, "uses": uses,"role_linked": role.name, "role_id": role.id}
     if(db.insert(data)):
         return True
     return False
@@ -94,7 +94,7 @@ async def invites(ctx, *args):
         print(role_input)
         validRole = await is_valid_role(ctx.guild.roles, role_input)
         validInvite = await is_valid_invite(ctx, args[2])
-        if(not validInvite or not validRole):
+        if(not validInvite[0] or not validRole):
             if(not validRole):
                 await ctx.send("Invalid Role Entered")
             else:
@@ -102,7 +102,7 @@ async def invites(ctx, *args):
         roles = ctx.guild.roles
         for role in roles:
             if(role.id == role_input):
-                result = add_role(args[2], role)
+                result = add_role(args[2], role, int(validInvite[1]))
                 if(result):
                     await ctx.send("Sucessfully linked {} to {}".format(args[1], args[2]))
                 else:
