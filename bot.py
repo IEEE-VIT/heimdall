@@ -59,12 +59,12 @@ async def hello(ctx):
 @bot.command()
 async def help(ctx):
     embed = discord.Embed(title="Prooster Bot",url="http://github.com/IEEE-VIT/palette-prooster",description="Prooster helps you manage invites and link them to Roles, by which you can assign the roles to members when they join with the invite.", color=discord.Color.blue())
-    embed.add_field(name="Help", value=f"`{prefix}help: Shows this message.`",inline=False)
+    embed.add_field(name="Help", value=f"`{prefix}help`: Shows this message.",inline=False)
     embed.add_field(name="Invites", 
     value=f'''`{prefix}invites show [optional: page-number]`: Shows the details of the invites on the Server, and the roles attached to them.\n
     `{prefix}invites link [@role] [invite-code]`: Links the invite with the role given.\n
-    `{prefix}invites unlink [@role] [invite-code]`: Unlinks the invite from the given role.\n
-    `{prefix}invites create`: The bot creates an invite.''',inline=True)
+    `{prefix}invites unlink [@role]`: Unlinks the invite from the given role.\n
+    `{prefix}invites create [channel-id]`: The bot creates an invite.''',inline=True)
     embed.add_field(name="Ping", value=f'`{prefix}hello`: Just to check if the bot is up.\n',inline=False)
     await ctx.send(embed=embed)
 
@@ -75,12 +75,12 @@ async def invites(ctx, *args):
         page = int(args[1]) if len(args)>1 else 1
         invites = await ctx.guild.invites() 
         nInvites = len(invites)
-        nPages  = nInvites//12 + 1
-        if(page>nPages):
+        nPages  = nInvites//8 + 1
+        if(page>nPages or page<1):
             await ctx.send("Ahem. That page doesn't exist, human. ಠ_ಠ")
             return
-        start = 12*(page-1)
-        end = nInvites if 12*page>nInvites else 12*page
+        start = 8*(page-1)
+        end = nInvites if 8*page>nInvites else 8*page
         linked_roles = get_linked_roles()
         for i in range(start, end):
             invite = invites[i]

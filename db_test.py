@@ -480,7 +480,7 @@ class MongoDB(Database):
     def delete(self, where):
         try:
             collection = self.connect()
-            collection.delete_one(where)
+            collection.delete_many(where)
             return True
         except Exception as e:
             print(e)
