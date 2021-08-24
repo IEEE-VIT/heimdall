@@ -4,30 +4,27 @@ import os
 import discord
 from discord.ext import commands
 from dotenv import load_dotenv
-import db
+import db_test
 
 load_dotenv()
 
-db = db.Database()
+db = db_test.Database.choose()
 client = discord.Client()
 prefix = os.getenv('BOT_PREFIX')+' '
 bot = commands.Bot(command_prefix=prefix)
 bot.remove_command("help")
-def role_finder(inviteLink,i):
-    if(i==0):
-        global data
-        data = db.fetch()
-    for invite_object in data:
-        if(invite_object["invite_code"] == inviteLink):
-            return invite_object["role_linked"]
+def get_linked_roles():
+    data = db.fetchone(['invite_code','role_linked'])
+    if(data):
+        return data
     return "None"
 
 
 async def is_valid_invite(ctx, code):
     for invite in await ctx.guild.invites():
         if(invite.code == code):
-            return True
-    return False
+            return [True,invite.uses]
+    return [False]
 
 
 async def is_valid_role(roles, input):
@@ -39,24 +36,17 @@ async def is_valid_role(roles, input):
     return False
 
 
-def add_role(inviteLink, role):
-    data = db.fetch()
-    for invite_object in data:
-        if(invite_object["invite_code"] == inviteLink):
-            return False
-    data = {"invite_code": inviteLink, "uses": 0,"role_linked": role.name, "role_id": role.id}
-    if(db.write(data)):
+def add_role(inviteLink, role, uses):
+    data = {"invite_code": inviteLink, "uses": uses,"role_linked": role.name, "role_id": role.id}
+    if(db.insert(data)):
         return True
     return False
 
 
 def remove_role(role):
-    data = db.fetch()
-    for i in range(len(data)):
-        if data[i]["role_linked"] == role.name:
-            if(db.write(data[i],delete=True)):
-                return True
-            return False
+    if(db.delete({'role_linked':role.name})):
+        return True
+    return False
 
 @bot.event
 async def on_ready():
@@ -69,12 +59,12 @@ async def hello(ctx):
 @bot.command()
 async def help(ctx):
     embed = discord.Embed(title="Prooster Bot",url="http://github.com/IEEE-VIT/palette-prooster",description="Prooster helps you manage invites and link them to Roles, by which you can assign the roles to members when they join with the invite.", color=discord.Color.blue())
-    embed.add_field(name="Help", value=f"`{prefix}help: Shows this message.`",inline=False)
+    embed.add_field(name="Help", value=f"`{prefix}help`: Shows this message.",inline=False)
     embed.add_field(name="Invites", 
     value=f'''`{prefix}invites show [optional: page-number]`: Shows the details of the invites on the Server, and the roles attached to them.\n
     `{prefix}invites link [@role] [invite-code]`: Links the invite with the role given.\n
-    `{prefix}invites unlink [@role] [invite-code]`: Unlinks the invite from the given role.\n
-    `{prefix}invites create`: The bot creates an invite.''',inline=True)
+    `{prefix}invites unlink [@role]`: Unlinks the invite from the given role.\n
+    `{prefix}invites create [channel-id]`: The bot creates an invite.''',inline=True)
     embed.add_field(name="Ping", value=f'`{prefix}hello`: Just to check if the bot is up.\n',inline=False)
     await ctx.send(embed=embed)
 
@@ -85,16 +75,17 @@ async def invites(ctx, *args):
         page = int(args[1]) if len(args)>1 else 1
         invites = await ctx.guild.invites() 
         nInvites = len(invites)
-        nPages  = nInvites//12 + 1
-        if(page>nPages):
+        nPages  = nInvites//8 + 1
+        if(page>nPages or page<1):
             await ctx.send("Ahem. That page doesn't exist, human. ಠ_ಠ")
             return
-        start = 12*(page-1)
-        end = nInvites if 12*page>nInvites else 12*page
+        start = 8*(page-1)
+        end = nInvites if 8*page>nInvites else 8*page
+        linked_roles = get_linked_roles()
         for i in range(start, end):
             invite = invites[i]
             stringGenerator += "```{}. Invite Code: {}\nInvite Uses: {}\nCreated By: {}\nChannel: {}\nMax Uses: {}\nRole Attached: {}\n\n```".format(
-                str(i+1), invite.code, invite.uses, invite.inviter, invite.channel, invite.max_uses, role_finder(invite.code, 0 if start==i else 1))
+                str(i+1), invite.code, invite.uses, invite.inviter, invite.channel, invite.max_uses, linked_roles.get(invite.code, "None"))
         stringGenerator += f"```Page {page} of {nPages}```"
         await ctx.send(stringGenerator)
 
@@ -103,7 +94,7 @@ async def invites(ctx, *args):
         print(role_input)
         validRole = await is_valid_role(ctx.guild.roles, role_input)
         validInvite = await is_valid_invite(ctx, args[2])
-        if(not validInvite or not validRole):
+        if(not validInvite[0] or not validRole):
             if(not validRole):
                 await ctx.send("Invalid Role Entered")
             else:
@@ -111,7 +102,7 @@ async def invites(ctx, *args):
         roles = ctx.guild.roles
         for role in roles:
             if(role.id == role_input):
-                result = add_role(args[2], role)
+                result = add_role(args[2], role, int(validInvite[1]))
                 if(result):
                     await ctx.send("Sucessfully linked {} to {}".format(args[1], args[2]))
                 else:

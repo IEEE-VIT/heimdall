@@ -2,26 +2,22 @@
 import discord
 import json
 import os
-import db
+import db_test
 from discord import channel
 from discord.ext import commands
 from dotenv import load_dotenv
 
-db = db.Database()
+db = db_test.Database.choose()
 load_dotenv()
 intents = discord.Intents.default()
 intents.members = True
 client = discord.Client(intents=intents)
 
-def inviteChecker(incoming_invite,i):
-    if(i==0):
-        global data
-        data = db.fetch()
+def inviteChecker(incoming_invite, data):
     for invite in data:
         if incoming_invite.code == invite["invite_code"]:
             if (incoming_invite.uses != invite["uses"]):
-                invite["uses"] = incoming_invite.uses
-                db.write(invite, update=True)
+                db.update({'uses':incoming_invite.uses}, {'invite_code':invite['invite_code']})
                 return int(invite["role_id"])
     return "none"
 
@@ -31,15 +27,15 @@ async def on_member_join(member):
     print("Someone has joined the server!")
     roles = member.guild.roles
     invites = await member.guild.invites()
-    i=0
+    db_invites = db.fetchall()
+    result = ''
     for invite in invites:
-        result = inviteChecker(invite,i)
+        result = inviteChecker(invite, db_invites)
         print("This is result", result)
         if(result != "none"):
             for role in roles:
                 if(role.id == result):
                     await member.add_roles(role)
-        i+=1
 
 
 @client.event
