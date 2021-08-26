@@ -1,16 +1,25 @@
 #!/usr/bin/env python3
-import json
+import configparser
 import os
 import discord
 from discord.ext import commands
-from dotenv import load_dotenv
-import db_test
+import db
 
-load_dotenv()
-
-db = db_test.Database.choose()
+config = configparser.ConfigParser()
+config.read('rooster.conf')
+try:
+    setup = config['ROOSTER']['SETUP']
+except KeyError:
+    print("Bot not setup. Please run setup-bot.py")
+    exit(0)
+db = db.Database.choose()
 client = discord.Client()
-prefix = os.getenv('BOT_PREFIX')+' '
+try:
+    prefix = config['ROOSTER']['BOT_PREFIX']
+    prefix = prefix[:prefix.index('$')]
+except Exception as e:
+    print("Invalid Bot Prefix. Please re-run setup-bot.py")
+    exit(0)
 bot = commands.Bot(command_prefix=prefix)
 bot.remove_command("help")
 def get_linked_roles():
@@ -134,7 +143,7 @@ async def invites(ctx, *args):
         await ctx.send(link)
 
 
-bot.run(os.getenv("BOT_TOKEN"))
+bot.run(config['ROOSTER']['BOT_TOKEN'])
 bot.add_command(help)
 bot.add_command(invites)
 bot.add_command(hello)

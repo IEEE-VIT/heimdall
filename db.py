@@ -1,71 +1,181 @@
 #!/usr/bin/env python3
 import json
 import os
-from dotenv import load_dotenv
+import configparser
 from os import path
 import sqlite3
 import psycopg2
 import mysql.connector
 from pymongo import MongoClient
-load_dotenv()
+from abc import ABC, abstractmethod
 
-class Database:
-    def fetch(self):
-        dbType = os.getenv('DB_TYPE')
+class Database(ABC):
+
+    @abstractmethod
+    def connect(self):
+        pass
+
+    @abstractmethod
+    def fetchall(self):
+        pass
+
+    @abstractmethod
+    def fetchone(self, row, where = None):
+        pass
+
+    @abstractmethod
+    def insert(self, row):
+        pass
+
+    @abstractmethod
+    def delete(self, row):
+        pass
+
+    @abstractmethod
+    def update(self, row, where = None):
+        pass
+
+    def choose():
+        config = configparser.ConfigParser()
+        config.read('rooster.conf')
+        dbType = config['DATABASE']['DB_TYPE']
         if dbType == "JSON":
-            return self.fetch_json()
+            dbObj = JSON()
         elif dbType == "POSTGRESQL":
-            return self.fetch_postgre()
+            dbObj = PostgreSQL()
         elif dbType == "SQLITE3":
-            return self.fetch_sqlite()
+            dbObj = SQLite3()
         elif dbType == "MYSQL":
-            return self.fetch_mysql()
+            dbObj = MySQL()
         elif dbType == "MONGODB":
-            return self.fetch_mongo()
+            dbObj = MongoDB()
         else:
+            print(dbType)
             raise Exception('Corrupted Config File')
+        return dbObj
 
-    def write(self, data, delete=False, update=False):
-        dbType = os.getenv('DB_TYPE')
-        if dbType == "JSON":
-            return self.write_json(data, delete,update)
-        elif dbType == "POSTGRESQL":
-            return self.write_postgre(data, delete,update)
-        elif dbType == "SQLITE3":
-            return self.write_sqlite(data, delete,update)
-        elif dbType == "MYSQL":
-            return self.write_mysql(data, delete, update)
-        elif dbType == "MONGODB":
-            return self.write_mongo(data, delete, update)
-        else:
-            raise Exception('Corrupted Config File')
+class MySQL(Database):
 
-
-    #-------------------
-    #MARK: POSTGRESQL SECTION
-    def connectToPostgre(self):
+    def connect(self):
         try:
-            con = psycopg2.connect(
-                database = os.getenv('PG_DBNAME'),user = os.getenv('PG_USER'), password = os.getenv('PG_PASS'),host = os.getenv('PG_HOST'), port = os.getenv('PG_PORT')
+            config = configparser.ConfigParser()
+            config.read('rooster.conf')
+            dbDetails = config['DATABASE']
+            con = mysql.connector.connect(
+                host = dbDetails['MY_HOST'],
+                port = dbDetails['MY_PORT'],
+                user = dbDetails['MY_USER'],
+                password = dbDetails['MY_PASS'],
+                database = dbDetails['MY_DBNAME'],
             )
-            return con
-        except Exception as err:
-            print("Error Connecting to PostgreSQL Server: ",err)
-
-    def createPostgreDB(self):
-        try:
-            con = self.connectToPostgre()
             con.autocommit = True
             cur = con.cursor()
-            cur.execute('CREATE TABLE IF NOT EXISTS invites(invite_code text, uses int, role_linked text, role_id text)')
+            cur.execute('CREATE TABLE IF NOT EXISTS invites(invite_code varchar(100) primary key, uses int(10), role_linked varchar(100), role_id varchar(200))')
+            return con
+        except Exception as e:
+            print('Error connecting to MySQL DB',e)
+    
+    def fetchall(self):
+        try:
+            con = self.connect()
+            cur = con.cursor()
+            cur.execute('SELECT * FROM invites')
+            rows = cur.fetchall()
+            data = []
+            for row in rows:
+                data.append({"invite_code": row[0], "uses": row[1],"role_linked": row[2], "role_id": row[3]})
             cur.close()
             con.close()
+            return data
+        except Exception as error:
+            print(error)
+            return {}
+    
+    def fetchone(self, column, where=None):
+        try:
+            con = self.connect()
+            cur = con.cursor()
+            column = ','.join(column)
+            if(where == None):
+                cur.execute(f'SELECT {column} FROM invites')
+            else:
+                where_clause = f'WHERE {list(where.keys())[0]} = "{list(where.values())[0]}"'
+                cur.execute(f'SELECT {column} FROM invites {where_clause}')
+            rows = cur.fetchall()
+            data = {'data':[]}
+            for row in rows:
+                if(len(row)>1):
+                    data[row[0]]=row[1]
+                else:
+                    data['data'].append(row[0])
+            return data
+        except Exception as e:
+            print(e)
+            return {}
+
+    def insert(self, data):
+        try:
+            con = self.connect()
+            con.autocommit = True
+            cur = con.cursor()
+            cur.execute(f"INSERT INTO invites(invite_code, uses, role_linked, role_id) VALUES('{data['invite_code']}', {data['uses']}, '{data['role_linked']}', '{data['role_id']}')")
+            con.close()
+            return True
+        except mysql.connector.Error as err:
+            if err.errno == 1146:
+                self.createMySQLDB()
+                self.insert(data)
+        except Exception as error:
+            print(error)
+            return False
+
+    def update(self, set, where):
+        try:
+            con = self.connect()
+            con.autocommit = True
+            cur = con.cursor()
+            cur.execute(f"UPDATE invites SET {list(set.keys())[0]}='{list(set.values())[0]}' WHERE {list(where.keys())[0]}='{list(where.values())[0]}'")
+            con.close()
+            return True
+        except Exception as error:
+            print(error)
+            return False
+
+    def delete(self, where):
+        try:
+            con = self.connect()
+            con.autocommit = True
+            cur = con.cursor()
+            where_clause = f'WHERE {list(where.keys())[0]}="{list(where.values())[0]}"'
+            cur.execute(f'DELETE FROM invites {where_clause}')
+            return True
+        except Exception as e:
+            print(e)
+            return False
+
+class PostgreSQL(Database):
+
+    def connect(self):
+        try:
+            config = configparser.ConfigParser()
+            config.read('rooster.conf')
+            dbDetails = config['DATABASE']
+            con = psycopg2.connect(
+                database = dbDetails['PG_DBNAME'],user = dbDetails['PG_USER'], password = dbDetails['PG_PASS'],host = dbDetails['PG_HOST'], port = dbDetails['PG_PORT']
+            )
+            con.autocommit = True
+            cur = con.cursor()
+            cur.execute('CREATE TABLE IF NOT EXISTS invites(invite_code text primary key, uses int, role_linked text, role_id text)')
+            return con
         except (Exception, psycopg2.DatabaseError) as error:
             print('Error occured while creating PostgreSQL Table: ', error)
-
-    def fetch_postgre(self):
+            return False
+        except Exception as err:
+            print("Error Connecting to PostgreSQL Server: ",err)
+    
+    def fetchall(self):
         try:
-            con = self.connectToPostgre()
+            con = self.connect()
             con.autocommit = True
             cur = con.cursor()
             cur.execute('SELECT * FROM invites')
@@ -79,138 +189,165 @@ class Database:
         except Exception as error:
             print(error)
             return {}
-    
-    def write_postgre(self,data,delete,update):
+
+    def fetchone(self, column, where=None):
         try:
-            con = self.connectToPostgre()
-            con.autocommit = True
+            con = self.connect()
             cur = con.cursor()
-            if(delete):
-                cur.execute(f"DELETE FROM invites WHERE invite_code='{data['invite_code']}'")
-            elif(update):
-                cur.execute(f"UPDATE invites SET uses='{data['uses']}' WHERE invite_code='{data['invite_code']}'")
+            column = ','.join(column)
+            if(where == None):
+                cur.execute(f'SELECT {column} FROM invites')
             else:
-                cur.execute(f"INSERT INTO invites(invite_code, uses, role_linked, role_id) VALUES('{data['invite_code']}', {data['uses']}, '{data['role_linked']}', '{data['role_id']}')")
-            cur.close()
-            con.close()
-            return True
-        except psycopg2.errors.UndefinedTable as error:
-            self.createPostgreDB()
-            self.write_postgre(data,delete,update)
-        except Exception as error:
-            print(error)
-            return False
-
-    #-------------------
-    #MARK: MYSQL SECTION
-    def connectToMySQL(self):
-        try:
-            con = mysql.connector.connect(
-                host = os.getenv('MY_HOST'),
-                port = os.getenv('MY_PORT'),
-                user = os.getenv('MY_USER'),
-                password = os.getenv('MY_PASS'),
-                database = os.getenv('MY_DBNAME'),
-            )
-            return con
-        except Exception as e:
-            print('Error connecting to MySQL DB',e)
-
-    def createMySQLDB(self):
-        try:
-            con = self.connectToMySQL()
-            con.autocommit = True
-            cur = con.cursor()
-            cur.execute('CREATE TABLE IF NOT EXISTS invites(invite_code varchar(100), uses int(10), role_linked varchar(100), role_id varchar(200))')
-            con.close()
-        except Exception as e:
-            print('Error occured creating MySQL Table',e)
-
-    def fetch_mysql(self):
-        try:
-            con = self.connectToMySQL()
-            cur = con.cursor()
-            cur.execute('SELECT * FROM invites')
+                where_clause = f"WHERE {list(where.keys())[0]} = '{list(where.values())[0]}'"
+                cur.execute(f'SELECT {column} FROM invites {where_clause}')
             rows = cur.fetchall()
-            data = []
+            data = {'data':[]}
             for row in rows:
-                data.append({"invite_code": row[0], "uses": row[1],"role_linked": row[2], "role_id": row[3]})
-            cur.close()
-            con.close()
+                if(len(row)>1):
+                    data[row[0]]=row[1]
+                else:
+                    data['data'].append(row[0])
             return data
-        except Exception as error:
-            print(error)
+        except Exception as e:
+            print(e)
             return {}
 
-    def write_mysql(self,data,delete,update):
+    def insert(self, data):
         try:
-            con = self.connectToMySQL()
+            con = self.connect()
             con.autocommit = True
             cur = con.cursor()
-            if(delete):
-                cur.execute(f"DELETE FROM invites WHERE invite_code='{data['invite_code']}'")
-            elif(update):
-                cur.execute(f"UPDATE invites SET uses='{data['uses']}' WHERE invite_code='{data['invite_code']}'")
-            else:
-                cur.execute(f"INSERT INTO invites(invite_code, uses, role_linked, role_id) VALUES('{data['invite_code']}', {data['uses']}, '{data['role_linked']}', '{data['role_id']}')")
+            cur.execute(f"INSERT INTO invites(invite_code, uses, role_linked, role_id) VALUES('{data['invite_code']}', {data['uses']}, '{data['role_linked']}', '{data['role_id']}')")
             con.close()
             return True
         except mysql.connector.Error as err:
             if err.errno == 1146:
                 self.createMySQLDB()
-                self.write_mysql(data,delete,update)
+                self.insert(data)
         except Exception as error:
             print(error)
             return False
 
-    #---------------------
-    #MARK: MONGODB SECTION
-    def connectToMongo(self):
-        con_string = os.getenv('MONGO_URL')
-        client = MongoClient(con_string)
-        database =  client['rooster']
-        return database['invites']
-
-    def fetch_mongo(self):
+    def update(self, set, where):
         try:
-            collection = self.connectToMongo()
-            data = []
-            for doc in collection.find():
-                data.append(doc)
-            return data
-        except Exception as error:
-            print(error)
-            return False
-
-    def write_mongo(self,data,delete,update):
-        try:
-            collection = self.connectToMongo()
-            if(delete):
-                collection.delete_one({'invite_code':data['invite_code']})
-            elif(update):
-                collection.update_one({'invite_code':data['invite_code']}, {'$set': {'uses':data['uses']}})
-            else:
-                collection.insert_one(data)
+            con = self.connect()
+            con.autocommit = True
+            cur = con.cursor()
+            cur.execute(f"UPDATE invites SET {list(set.keys())[0]}='{list(set.values())[0]}' WHERE {list(where.keys())[0]}='{list(where.values())[0]}'")
+            con.close()
             return True
         except Exception as error:
             print(error)
             return False
 
-    #---------------------
-    #MARK: SQLITE3 SECTION
-    def createSQLiteDB(self):
-        con = sqlite3.connect('invites.db')
-        cur = con.cursor()
-        cur.execute('CREATE TABLE invites(invite_code text, uses int, role_linked text, role_id text)')
-        con.commit()
-        con.close()
-        print("Created Invites DB!")
-
-    def fetch_sqlite(self):
+    def delete(self, where):
         try:
-            if(not(path.exists("invites.db"))):
-                return {}
+            con = self.connect()
+            con.autocommit = True
+            cur = con.cursor()
+            where_clause = f"WHERE {list(where.keys())[0]}='{list(where.values())[0]}'"
+            cur.execute(f"DELETE FROM invites {where_clause}")
+            return True
+        except Exception as e:
+            print(e)
+            return False
+
+class JSON(Database):
+
+    def connect(self):
+        try:
+            f = open('data.json')
+            data = json.load(f)
+            return data['data']
+        except Exception as error:
+            print('Error while fetching JSON file:', error)
+            return False
+
+    def fetchall(self):
+        try:
+            data = self.connect()
+            return data
+        except Exception as error:
+            print("Error while fetching JSON file: ",error)
+            return False
+    
+    def fetchone(self, row, where=None):
+        try:
+            data = self.connect()
+            rows = {'data':[]}
+            if where == None:
+                for line in data:
+                    if(type(row)==list and len(row)>1):
+                        rows[line[row[0]]] = line[row[1]]
+                    else:
+                        rows['data'].append(line[row[0]])
+                return rows
+            else:
+                for line in data:
+                    if list(where.values())[0] == line[list(where.keys())[0]]:
+                        if(type(row)==list and len(row)>1):
+                            rows[line[row[0]]] = line[row[1]]
+                        else:
+                            rows['data'].append(line[row[0]])
+        except Exception as error:
+            print("Error while fetching JSON file: ",error)
+            return False
+
+    def insert(self, row):
+        try:
+            data = self.connect()
+            data.append(row)
+            data = {'data': data}
+            with open('data.json','w+') as d:
+                json.dump(data, d)
+            return True
+        except Exception as error:
+            print("Error while inserting to JSON file: ",error)
+            return False
+    
+    def update(self, set, where):
+        try:
+            data = self.connect()
+            for line in data:
+                if line[list(where.keys())[0]] == list(where.values())[0]:
+                    line[list(set.keys())[0]] = list(set.values())[0]
+            data = {'data': data}
+            with open('data.json','w+') as d:
+                json.dump(data, d)
+            return True
+        except Exception as error:
+            print("Error while updating JSON file: ",error)
+            return False
+
+    def delete(self, where=None):
+        try:
+            data = self.connect()
+            for i in range(len(data)):
+                if data[i][list(where.keys())[0]] == list(where.values())[0]:
+                    data.pop(i)
+            data = {'data': data}
+            with open('data.json','w+') as d:
+                json.dump(data, d)
+            return True
+        except Exception as error:
+            print("Error while deleting from JSON file: ",error)
+            return False
+
+class SQLite3(Database):
+
+    def connect(self):
+        try:
             con = sqlite3.connect('invites.db')
+            cur = con.cursor()
+            cur.execute('CREATE TABLE IF NOT EXISTS invites(invite_code text primary key, uses int, role_linked text, role_id text)')
+            con.commit()
+            return con
+        except Exception as e:
+            print('Error connecting to SQLite3 DB: ',e)
+    
+    def fetchall(self):
+        try:
+            con = self.connect()
             cur = con.cursor()
             result = cur.execute('SELECT * FROM invites').fetchall()
             data = []
@@ -220,60 +357,141 @@ class Database:
             con.close()
             return data
         except Exception as error:
-            print("Error while fetching from SQLite3 DB: ",error)
+            print(error)
+            return {}
+    
+    def fetchone(self, column, where=None):
+        try:
+            con = self.connect()
+            cur = con.cursor()
+            column = ','.join(column)
+            if(where == None):
+                cur.execute(f'SELECT {column} FROM invites')
+            else:
+                where_clause = f'WHERE {list(where.keys())[0]} = "{list(where.values())[0]}"'
+                cur.execute(f'SELECT {column} FROM invites {where_clause}')
+            rows = cur.fetchall()
+            data = {'data':[]}
+            for row in rows:
+                if(len(row)>1):
+                    data[row[0]]=row[1]
+                else:
+                    data['data'].append(row[0])
+            return data
+        except Exception as e:
+            print(e)
             return {}
 
-    def write_sqlite(self, data, delete, update):
+    def insert(self, data):
         try:
-            if(not(path.exists("invites.db"))):
-                self.createSQLiteDB()
-            con = sqlite3.connect('invites.db')
+            con = self.connect()
             cur = con.cursor()
-            if(delete):
-                cur.execute(f'DELETE FROM invites WHERE invite_code="{data["invite_code"]}"')
-            elif(update):
-                cur.execute(f'UPDATE invites SET uses="{data["uses"]}" WHERE invite_code="{data["invite_code"]}"')
-            else:
-                cur.execute(f'INSERT INTO invites(invite_code, uses, role_linked, role_id) VALUES("{data["invite_code"]}", {data["uses"]}, "{data["role_linked"]}", "{data["role_id"]}")')
+            cur.execute(f"INSERT INTO invites(invite_code, uses, role_linked, role_id) VALUES('{data['invite_code']}', {data['uses']}, '{data['role_linked']}', '{data['role_id']}')")
+            con.commit()
+            con.close()
+            return True
+        except mysql.connector.Error as err:
+            if err.errno == 1146:
+                self.createMySQLDB()
+                self.insert(data)
+        except Exception as error:
+            print(error)
+            return False
+
+    def update(self, set, where):
+        try:
+            con = self.connect()
+            cur = con.cursor()
+            cur.execute(f"UPDATE invites SET {list(set.keys())[0]}='{list(set.values())[0]}' WHERE {list(where.keys())[0]}='{list(where.values())[0]}'")
             con.commit()
             con.close()
             return True
         except Exception as error:
-            print("Error while writing to SQLite3 DB: ",error)
+            print(error)
             return False
 
-    #-------------------
-    #MARK: JSON SECTION
-    def fetch_json(self):
+    def delete(self, where):
         try:
-            with open('data.json') as f:
-                data = json.load(f)
-                return data['data']
-        except Exception as error:
-            print("Error while fetching JSON file: ",error)
-            return "Error"
+            con = self.connect()
+            cur = con.cursor()
+            where_clause = f'WHERE {list(where.keys())[0]}="{list(where.values())[0]}"'
+            cur.execute(f'DELETE FROM invites {where_clause}')
+            con.commit()
+            con.close()
+            return True
+        except Exception as e:
+            print(e)
+            return False
 
-    def write_json(self, data, delete, update):
+class MongoDB(Database):
+
+    def connect(self):
         try:
-            old_data = self.fetch_json()
-            if(delete):
-                for i in range(len(old_data)):
-                    if old_data[i] == data:
-                        old_data.pop(i)
-                    elif i==len(old_data)-1:# Not Found
-                        print("Invite Code Not Found.")
-                        raise Exception()
-            elif(update):
-                for i in range(len(old_data)):
-                    if old_data[i]['invite_code'] == data['invite_code']:
-                        old_data[i] = data
-                        break
+            config = configparser.ConfigParser()
+            config.read('rooster.conf')
+            dbDetails = config['DATABASE']
+            con_string = dbDetails['MONGO_URL']
+            client = MongoClient(con_string)
+            database =  client['rooster']
+            return database['invites']
+        except Exception as e:
+            print('Error connecting to MongoDB: ',e)
+
+    def fetchall(self):
+        try:
+            collection = self.connect()
+            data = []
+            for doc in collection.find():
+                data.append(doc)
+            return data
+        except Exception as error:
+            print(error)
+            return {}
+    
+    def fetchone(self, column, where=None):
+        try:
+            collection = self.connect()
+            data = {'data':[]}
+            if(where == None):
+                for doc in collection.find({}, {key: 1 for key in column}):
+                    if(len(column)>1):
+                        data[doc[column[0]]] = doc[column[1]]
+                    else:
+                        data['data'].append(doc[column])
             else:
-                old_data.append(data)
-            data = {'data':old_data}
-            with open('data.json','w+') as d:
-                json.dump(data, d)
+                for doc in collection.find(where, {key: 1 for key in column}):
+                    if(len(column)>1):
+                        data[doc[column[0]]] = doc[column[1]]
+                    else:
+                        data['data'].append(doc[column])
+            return data
+        except Exception as e:
+            print(e)
+            return {}
+
+    def insert(self, data):
+        try:
+            collection = self.connect()
+            collection.insert_one(data)
             return True
         except Exception as error:
-            print("Error while writing to JSON: ",error)
+            print(error)
+            return False
+
+    def update(self, set, where):
+        try:
+            collection = self.connect()
+            collection.update_one(where, {'$set': set})
+            return True
+        except Exception as error:
+            print(error)
+            return False
+
+    def delete(self, where):
+        try:
+            collection = self.connect()
+            collection.delete_many(where)
+            return True
+        except Exception as e:
+            print(e)
             return False
