@@ -1,16 +1,25 @@
 #!/usr/bin/env python3
-import json
+import configparser
 import os
 import discord
 from discord.ext import commands
-from dotenv import load_dotenv
-import db_test
+import db
 
-load_dotenv()
-
-db = db_test.Database.choose()
+config = configparser.ConfigParser()
+config.read('heimdall.conf')
+try:
+    setup = config['HEIMDALL']['SETUP']
+except KeyError:
+    print("Bot not setup. Please run setup-bot.py")
+    exit(0)
+db = db.Database.choose()
 client = discord.Client()
-prefix = os.getenv('BOT_PREFIX')+' '
+try:
+    prefix = config['HEIMDALL']['BOT_PREFIX']
+    prefix = prefix[:prefix.index('$')]
+except Exception as e:
+    print("Invalid Bot Prefix. Please re-run setup-bot.py")
+    exit(0)
 bot = commands.Bot(command_prefix=prefix)
 bot.remove_command("help")
 def get_linked_roles():
@@ -58,7 +67,7 @@ async def hello(ctx):
 
 @bot.command()
 async def help(ctx):
-    embed = discord.Embed(title="Prooster Bot",url="http://github.com/IEEE-VIT/palette-prooster",description="Prooster helps you manage invites and link them to Roles, by which you can assign the roles to members when they join with the invite.", color=discord.Color.blue())
+    embed = discord.Embed(title="Heimdall Bot",url="http://github.com/IEEE-VIT/heimdall",description="Heimdall helps you manage invites and link them to Roles, by which you can assign the roles to members when they join with the invite.", color=discord.Color.orange())
     embed.add_field(name="Help", value=f"`{prefix}help`: Shows this message.",inline=False)
     embed.add_field(name="Invites", 
     value=f'''`{prefix}invites show [optional: page-number]`: Shows the details of the invites on the Server, and the roles attached to them.\n
@@ -134,7 +143,7 @@ async def invites(ctx, *args):
         await ctx.send(link)
 
 
-bot.run(os.getenv("BOT_TOKEN"))
+bot.run(config['HEIMDALL']['BOT_TOKEN'])
 bot.add_command(help)
 bot.add_command(invites)
 bot.add_command(hello)

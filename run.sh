@@ -2,4 +2,5 @@
 
 set -e
 
-exec python3 setup-bot.py
+exec python3 client.py &
+exec python3 bot.py

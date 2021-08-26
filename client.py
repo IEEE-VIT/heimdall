@@ -1,14 +1,18 @@
 #!/usr/bin/env python3
 import discord
-import json
-import os
-import db_test
+import configparser
+import db
 from discord import channel
 from discord.ext import commands
-from dotenv import load_dotenv
 
-db = db_test.Database.choose()
-load_dotenv()
+config = configparser.ConfigParser()
+config.read('heimdall.conf')
+try:
+    setup = config['HEIMDALL']['SETUP']
+except KeyError:
+    print("Bot not setup. Please run setup-bot.py")
+    exit(0)
+db = db.Database.choose()
 intents = discord.Intents.default()
 intents.members = True
 client = discord.Client(intents=intents)
@@ -43,4 +47,4 @@ async def on_ready():
     print('Client logged in as {0.user}'.format(client))
 
 
-client.run(os.getenv("BOT_TOKEN"))
+client.run(config['HEIMDALL']['BOT_TOKEN'])
