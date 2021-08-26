@@ -141,4 +141,4 @@ cython_debug/
 test.py
 data.json
 invites.db
-rooster.conf
+heimdall.conf

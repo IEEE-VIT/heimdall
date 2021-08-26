@@ -4,16 +4,16 @@ from getpass import getpass
 import configparser
 
 config = configparser.ConfigParser()
-config['ROOSTER'] = {}
+config['HEIMDALL'] = {}
 dbs = ['JSON','SQLITE3','POSTGRESQL','MYSQL','MONGODB']
-print('Welcome to PRooster!')
+print('Welcome to Heimdall!')
 
 def setup():
-    config['ROOSTER']['BOT_PREFIX'] = input('Enter the Bot Prefix(end with $): ')
-    if('$' not in config['ROOSTER']['BOT_PREFIX']):
+    config['HEIMDALL']['BOT_PREFIX'] = input('Enter the Bot Prefix(end with $): ')
+    if('$' not in config['HEIMDALL']['BOT_PREFIX']):
         print('Error: $ not found in Prefix. Re-run the program.')
         exit(0)
-    config['ROOSTER']['BOT_TOKEN'] = input('Enter the Bot Token: ')
+    config['HEIMDALL']['BOT_TOKEN'] = input('Enter the Bot Token: ')
 
     dbtype = int(input('\nDB Type: \n1)JSON(*)\n2)SQLite3\n3)PostgreSQL\n4)MySQL\n5)MongoDB\nEnter option: '))
     dbtype = dbtype if 6>dbtype>0 else 1
@@ -37,10 +37,10 @@ def setup():
         config['DATABASE']['MY_DBNAME'] = input('Database Name: ')
     elif(dbtype == 'MONGODB'):
         config['DATABASE']['MONGO_URL'] = input('MongoDB Connection URL: ')
-    config['ROOSTER']['SETUP'] = '1'
+    config['HEIMDALL']['SETUP'] = '1'
 
 setup()
 
-with open('rooster.conf','w') as configFile:
+with open('heimdall.conf','w') as configFile:
     config.write(configFile)
-    print('Configs written to rooster.conf')
+    print('Configs written to heimdall.conf')

@@ -6,9 +6,9 @@ from discord import channel
 from discord.ext import commands
 
 config = configparser.ConfigParser()
-config.read('rooster.conf')
+config.read('heimdall.conf')
 try:
-    setup = config['ROOSTER']['SETUP']
+    setup = config['HEIMDALL']['SETUP']
 except KeyError:
     print("Bot not setup. Please run setup-bot.py")
     exit(0)
@@ -47,4 +47,4 @@ async def on_ready():
     print('Client logged in as {0.user}'.format(client))
 
 
-client.run(config['ROOSTER']['BOT_TOKEN'])
+client.run(config['HEIMDALL']['BOT_TOKEN'])

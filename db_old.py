@@ -168,7 +168,7 @@ class Database:
     def connectToMongo(self):
         con_string = os.getenv('MONGO_URL')
         client = MongoClient(con_string)
-        database =  client['rooster']
+        database =  client['heimdall']
         return database['invites']
 
     def fetch_mongo(self):

@@ -37,7 +37,7 @@ class Database(ABC):
 
     def choose():
         config = configparser.ConfigParser()
-        config.read('rooster.conf')
+        config.read('heimdall.conf')
         dbType = config['DATABASE']['DB_TYPE']
         if dbType == "JSON":
             dbObj = JSON()
@@ -59,7 +59,7 @@ class MySQL(Database):
     def connect(self):
         try:
             config = configparser.ConfigParser()
-            config.read('rooster.conf')
+            config.read('heimdall.conf')
             dbDetails = config['DATABASE']
             con = mysql.connector.connect(
                 host = dbDetails['MY_HOST'],
@@ -158,7 +158,7 @@ class PostgreSQL(Database):
     def connect(self):
         try:
             config = configparser.ConfigParser()
-            config.read('rooster.conf')
+            config.read('heimdall.conf')
             dbDetails = config['DATABASE']
             con = psycopg2.connect(
                 database = dbDetails['PG_DBNAME'],user = dbDetails['PG_USER'], password = dbDetails['PG_PASS'],host = dbDetails['PG_HOST'], port = dbDetails['PG_PORT']
@@ -428,11 +428,11 @@ class MongoDB(Database):
     def connect(self):
         try:
             config = configparser.ConfigParser()
-            config.read('rooster.conf')
+            config.read('heimdall.conf')
             dbDetails = config['DATABASE']
             con_string = dbDetails['MONGO_URL']
             client = MongoClient(con_string)
-            database =  client['rooster']
+            database =  client['heimdall']
             return database['invites']
         except Exception as e:
             print('Error connecting to MongoDB: ',e)
