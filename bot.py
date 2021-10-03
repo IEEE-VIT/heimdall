@@ -145,8 +145,8 @@ async def invites(ctx, *args):
 
 
 @bot.command()
-async def announce(ctx, channel:discord.TextChannel, *args):
-    await channel.send(f"📢 " + " ".join(str(x) for x in args) + " 📢")
+async def announce(ctx, channel:discord.TextChannel, *, msg):
+    await channel.send(msg)
 
 
 @announce.error
