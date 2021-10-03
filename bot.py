@@ -75,6 +75,7 @@ async def help(ctx):
     `{prefix}invites unlink [@role]`: Unlinks the invite from the given role.\n
     `{prefix}invites create [channel-id]`: The bot creates an invite.''',inline=True)
     embed.add_field(name="Ping", value=f'`{prefix}hello`: Just to check if the bot is up.\n',inline=False)
+    embed.add_field(name="Announce", value=f"`{prefix}announce [channel-id] [message]`: Send an announcement to a specified channel",inline=False)
     await ctx.send(embed=embed)
 
 @bot.command()
@@ -141,6 +142,19 @@ async def invites(ctx, *args):
             return
         link = await general_invite.create_invite(reason=ctx.author.name + " Created a Global Invite")
         await ctx.send(link)
+
+
+@bot.command()
+async def announce(ctx, channel:discord.TextChannel, *, msg):
+    await channel.send(msg)
+
+
+@announce.error
+async def flip_error(ctx, error):
+    if isinstance(error, commands.MissingRequiredArgument):
+        await ctx.send(f"Missing required argument(s), run {prefix}help for more info.")
+    elif isinstance(error, commands.errors.ChannelNotFound):
+        await ctx.send("Channel missing or not found!")
 
 
 bot.run(config['HEIMDALL']['BOT_TOKEN'])
